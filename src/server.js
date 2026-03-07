@@ -1,28 +1,28 @@
-require('dotenv').config();
+require('dotenv').config()
 
-const express = require('express');
-const cors = require('cors');
+const express=require('express')
+const cors=require('cors')
 
-const ratesRoutes = require('./routes/rates');
-const adminRoutes = require('./routes/admin');
+const ratesRoutes=require('./routes/rates')
 
-const app = express();
-const PORT = Number(process.env.PORT || 3000);
+const app=express()
 
-app.use(cors());
-app.use(express.json());
+const PORT=process.env.PORT||3000
 
-app.get('/', (req, res) => {
-  return res.json({
-    success: true,
-    message: 'Dinar Now API is running.',
-    admin: `http://localhost:${PORT}/admin`
-  });
-});
+app.use(cors())
+app.use(express.json())
 
-app.use('/rates', ratesRoutes);
-app.use('/admin', adminRoutes);
+app.get('/',(req,res)=>{
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+res.json({
+success:true,
+message:'Dinar Now API running'
+})
+
+})
+
+app.use('/rates',ratesRoutes)
+
+app.listen(PORT,()=>{
+console.log(`Server running on port ${PORT}`)
+})

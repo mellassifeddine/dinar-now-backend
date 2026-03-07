@@ -1,41 +1,36 @@
-const Database = require('better-sqlite3');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 
-const db = new Database('rates.db');
+const dbPath = path.join(__dirname, '../../rates.db');
 
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS rates (
-    currency TEXT PRIMARY KEY,
-    buy REAL NOT NULL,
-    sell REAL NOT NULL
-  )
-`).run();
+const db = new sqlite3.Database(dbPath);
 
-const seedRates = [
-  { currency: 'EUR', buy: 277.0, sell: 279.0 },
-  { currency: 'USD', buy: 231.5, sell: 235.0 },
-  { currency: 'GBP', buy: 310.0, sell: 314.0 },
-  { currency: 'CAD', buy: 168.0, sell: 172.0 },
-  { currency: 'CNY', buy: 18.7, sell: 19.1 },
-  { currency: 'CHF', buy: 166.5, sell: 169.8 }
-];
+db.serialize(() => {
 
-const selectOneStmt = db.prepare(`
-  SELECT currency
-  FROM rates
-  WHERE currency = ?
-`);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS rates (
+      currency TEXT PRIMARY KEY,
+      buy REAL,
+      sell REAL
+    )
+  `);
 
-const insertStmt = db.prepare(`
-  INSERT INTO rates (currency, buy, sell)
-  VALUES (?, ?, ?)
-`);
+  const seedRates = [
+    ['EUR',277,279],
+    ['USD',231.5,235],
+    ['GBP',310,314],
+    ['CAD',168,172],
+    ['CNY',18.7,19.1],
+    ['CHF',166.5,169.8]
+  ];
 
-for (const rate of seedRates) {
-  const exists = selectOneStmt.get(rate.currency);
+  seedRates.forEach(rate=>{
+    db.run(`
+      INSERT OR IGNORE INTO rates(currency,buy,sell)
+      VALUES(?,?,?)
+    `,rate);
+  });
 
-  if (!exists) {
-    insertStmt.run(rate.currency, rate.buy, rate.sell);
-  }
-}
+});
 
 module.exports = db;
