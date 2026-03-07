@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "Backend API for Dinar Now",
   "main": "src/server.js",
-  "scripts": {
-    "start": "node src/server.js"
-  },
   "type": "commonjs",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "postinstall": "npm rebuild sqlite3 --build-from-source"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
