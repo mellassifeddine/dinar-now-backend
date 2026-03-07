@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dinar Now - Admin Parallel Rates</title>
+  <style>
+    :root {
+      --bg: #050505;
+      --panel: #111522;
+      --card: #151821;
+      --border: #20242f;
+      --text: #f5f7fa;
+      --muted: #9aa3b2;
+      --primary: #27e1a7;
+      --danger: #ff5a5f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: linear-gradient(to bottom, #050505, #070910, #050505);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      font-weight: 800;
+    }
+
+    p.subtitle {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .status {
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .button {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .button-secondary {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .panel {
+      background: rgba(17, 21, 34, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+    }
+
+    .auth-box {
+      margin-bottom: 18px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(21, 24, 33, 0.9);
+      border: 1px solid var(--border);
+    }
+
+    .auth-title {
+      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .auth-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .field {
+      width: 100%;
+      min-width: 110px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #0d111b;
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .field:focus {
+      border-color: var(--primary);
+    }
+
+    .key-field {
+      max-width: 320px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      text-align: left;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody td {
+      padding: 14px 10px;
+      border-bottom: 1px solid rgba(32, 36, 47, 0.7);
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .currency {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .save-btn {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      background: var(--primary);
+      color: #000;
+    }
+
+    .save-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .message {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      display: none;
+    }
+
+    .message.success {
+      display: block;
+      background: rgba(39, 225, 167, 0.12);
+      color: var(--primary);
+      border: 1px solid rgba(39, 225, 167, 0.35);
+    }
+
+    .message.error {
+      display: block;
+      background: rgba(255, 90, 95, 0.12);
+      color: var(--danger);
+      border: 1px solid rgba(255, 90, 95, 0.35);
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 14px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+
+      .topbar,
+      .auth-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .key-field {
+        max-width: none;
+      }
+
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tbody tr {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: var(--card);
+        margin-bottom: 14px;
+        padding: 10px;
+      }
+
+      tbody td {
+        border: none;
+        padding: 8px 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Dinar Now – Admin Parallel Rates</h1>
+    <p class="subtitle">
+      Gère les taux du marché parallèle stockés en SQLite. Les modifications seront récupérées par l’app Flutter.
+    </p>
+
+    <div class="topbar">
+      <div class="status" id="statusBox">Chargement des taux...</div>
+      <button class="button button-secondary" id="refreshButton">Actualiser</button>
+    </div>
+
+    <div class="panel">
+      <div class="auth-box">
+        <p class="auth-title">Admin key</p>
+        <div class="auth-row">
+          <input
+            id="adminKeyInput"
+            class="field key-field"
+            type="password"
+            placeholder="Entrez la clé admin"
+            autocomplete="off"
+          />
+          <button class="button button-secondary" id="rememberKeyButton">Mémoriser</button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Currency</th>
+            <th>Buy</th>
+            <th>Sell</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="ratesTableBody"></tbody>
+      </table>
+
+      <div id="messageBox" class="message"></div>
+    </div>
+  </div>
+
+  <script>
+    const statusBox = document.getElementById('statusBox');
+    const refreshButton = document.getElementById('refreshButton');
+    const rememberKeyButton = document.getElementById('rememberKeyButton');
+    const adminKeyInput = document.getElementById('adminKeyInput');
+    const ratesTableBody = document.getElementById('ratesTableBody');
+    const messageBox = document.getElementById('messageBox');
+
+    const STORAGE_KEY = 'DINAR_NOW_ADMIN_KEY';
+
+    function loadSavedAdminKey() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        adminKeyInput.value = saved;
+      }
+    }
+
+    function saveAdminKey() {
+      const value = adminKeyInput.value.trim();
+      localStorage.setItem(STORAGE_KEY, value);
+      showMessage('Clé admin mémorisée dans ce navigateur.', 'success');
+    }
+
+    function getAdminKey() {
+      return adminKeyInput.value.trim();
+    }
+
+    function showMessage(text, type) {
+      messageBox.textContent = text;
+      messageBox.className = `message ${type}`;
+    }
+
+    function clearMessage() {
+      messageBox.textContent = '';
+      messageBox.className = 'message';
+    }
+
+    function createRow(rate) {
+      const tr = document.createElement('tr');
+
+      tr.innerHTML = `
+        <td>
+          <div class="currency">${rate.currency}</div>
+          <div class="muted">Parallel market</div>
+        </td>
+        <td>
+          <input
+            class="field"
+            type="number"
+            step="0.1"
+            value="${rate.buy}"
+            data-type="buy"
+            data-currency="${rate.currency}"
+          />
+        </td>
+        <td>
+          <input
+            class="field"
+            type="number"
+            step="0.1"
+            value="${rate.sell}"
+            data-type="sell"
+            data-currency="${rate.currency}"
+          />
+        </td>
+        <td>
+          <button class="save-btn" data-save="${rate.currency}">Save</button>
+        </td>
+      `;
+
+      return tr;
+    }
+
+    async function loadRates() {
+      clearMessage();
+      statusBox.textContent = 'Chargement des taux...';
+
+      try {
+        const response = await fetch('/rates/parallel');
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const rates = await response.json();
+
+        ratesTableBody.innerHTML = '';
+        rates.forEach((rate) => {
+          ratesTableBody.appendChild(createRow(rate));
+        });
+
+        statusBox.textContent = `${rates.length} devises chargées.`;
+      } catch (error) {
+        statusBox.textContent = 'Erreur de chargement.';
+        showMessage(`Impossible de charger les taux: ${error.message}`, 'error');
+      }
+    }
+
+    async function saveRate(currency) {
+      clearMessage();
+
+      const adminKey = getAdminKey();
+
+      if (!adminKey) {
+        showMessage('La clé admin est obligatoire.', 'error');
+        return;
+      }
+
+      const buyInput = document.querySelector(`input[data-type="buy"][data-currency="${currency}"]`);
+      const sellInput = document.querySelector(`input[data-type="sell"][data-currency="${currency}"]`);
+      const saveButton = document.querySelector(`button[data-save="${currency}"]`);
+
+      const buy = Number(buyInput.value);
+      const sell = Number(sellInput.value);
+
+      if (Number.isNaN(buy) || Number.isNaN(sell)) {
+        showMessage(`Valeurs invalides pour ${currency}.`, 'error');
+        return;
+      }
+
+      saveButton.disabled = true;
+      saveButton.textContent = 'Saving...';
+
+      try {
+        const response = await fetch('/rates/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': adminKey
+          },
+          body: JSON.stringify({
+            currency,
+            buy,
+            sell,
+            adminKey
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Update failed');
+        }
+
+        showMessage(`${currency} mis à jour avec succès.`, 'success');
+      } catch (error) {
+        showMessage(`Erreur de sauvegarde pour ${currency}: ${error.message}`, 'error');
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save';
+      }
+    }
+
+    refreshButton.addEventListener('click', loadRates);
+    rememberKeyButton.addEventListener('click', saveAdminKey);
+
+    document.addEventListener('click', async (event) => {
+      const currency = event.target.getAttribute('data-save');
+      if (!currency) return;
+      await saveRate(currency);
+    });
+
+    loadSavedAdminKey();
+    loadRates();
+  </script>
+</body>
+</html>
