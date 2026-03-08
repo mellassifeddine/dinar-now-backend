@@ -8,15 +8,17 @@ const adminRoutes = require('./routes/admin');
 const cryptoRoutes = require('./routes/crypto');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 app.use(cors());
 app.use(express.json());
 
 app.get('/', (req, res) => {
-  res.json({
+  return res.json({
     success: true,
-    message: 'Dinar Now API running'
+    message: 'Dinar Now API is running.',
+    admin: '/admin',
+    crypto: '/crypto'
   });
 });
 
@@ -25,5 +27,5 @@ app.use('/admin', adminRoutes);
 app.use('/crypto', cryptoRoutes);
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('Server running on port', PORT);
+  console.log(`Server running on port ${PORT}`);
 });
