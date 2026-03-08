@@ -3,16 +3,15 @@ const https = require('https');
 
 const router = express.Router();
 
-function fetchCoinGeckoJson(url, demoApiKey) {
+function fetchJson(url) {
   return new Promise((resolve, reject) => {
     const request = https.get(
       url,
       {
         headers: {
           'User-Agent': 'DinarNowBackend/1.0',
-          'Accept': 'application/json',
-          'x-cg-demo-api-key': demoApiKey,
-        },
+          'Accept': 'application/json'
+        }
       },
       (response) => {
         let data = '';
@@ -27,9 +26,7 @@ function fetchCoinGeckoJson(url, demoApiKey) {
           try {
             json = JSON.parse(data);
           } catch (_) {
-            return reject(
-              new Error(`CoinGecko returned invalid JSON: ${data}`)
-            );
+            return reject(new Error('CoinGecko returned invalid JSON.'));
           }
 
           if (response.statusCode && response.statusCode >= 400) {
@@ -57,16 +54,6 @@ function fetchCoinGeckoJson(url, demoApiKey) {
 }
 
 router.get('/', async (req, res) => {
-  const rawKey = process.env.COINGECKO_DEMO_API_KEY;
-  const demoApiKey = String(rawKey || '').trim();
-
-  if (!demoApiKey) {
-    return res.status(500).json({
-      success: false,
-      message: 'COINGECKO_DEMO_API_KEY is missing on the server.',
-    });
-  }
-
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const perPage = Math.min(
     50,
@@ -74,13 +61,7 @@ router.get('/', async (req, res) => {
   );
 
   try {
-    const pingUrl =
-      `https://api.coingecko.com/api/v3/ping` +
-      `?x_cg_demo_api_key=${encodeURIComponent(demoApiKey)}`;
-
-    await fetchCoinGeckoJson(pingUrl, demoApiKey);
-
-    const marketsUrl =
+    const url =
       `https://api.coingecko.com/api/v3/coins/markets` +
       `?vs_currency=usd` +
       `&order=market_cap_desc` +
@@ -88,16 +69,14 @@ router.get('/', async (req, res) => {
       `&page=${page}` +
       `&sparkline=false` +
       `&price_change_percentage=24h` +
-      `&locale=en` +
-      `&x_cg_demo_api_key=${encodeURIComponent(demoApiKey)}`;
+      `&locale=en`;
 
-    const json = await fetchCoinGeckoJson(marketsUrl, demoApiKey);
+    const json = await fetchJson(url);
 
     if (!Array.isArray(json)) {
       return res.status(502).json({
         success: false,
-        message: 'CoinGecko returned an unexpected payload.',
-        raw: json,
+        message: 'CoinGecko returned an unexpected payload.'
       });
     }
 
@@ -110,7 +89,7 @@ router.get('/', async (req, res) => {
       marketCap: item.market_cap,
       price: item.current_price,
       priceChangePercentage24h:
-        item.price_change_percentage_24h_in_currency,
+        item.price_change_percentage_24h
     }));
 
     return res.json(result);
@@ -120,9 +99,7 @@ router.get('/', async (req, res) => {
     return res.status(502).json({
       success: false,
       message: 'CoinGecko request failed.',
-      error: error.message,
-      keyPresent: true,
-      keyLength: demoApiKey.length,
+      error: error.message
     });
   }
 });
