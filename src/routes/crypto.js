@@ -63,45 +63,44 @@ router.get('/', async (req, res) => {
     });
   }
 
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const perPage = Math.min(
+    50,
+    Math.max(1, Number.parseInt(req.query.perPage, 10) || 10)
+  );
+
   try {
     const url =
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether&vs_currencies=usd';
+      `https://api.coingecko.com/api/v3/coins/markets` +
+      `?vs_currency=usd` +
+      `&order=market_cap_desc` +
+      `&per_page=${perPage}` +
+      `&page=${page}` +
+      `&sparkline=false` +
+      `&price_change_percentage=24h` +
+      `&locale=en`;
 
     const json = await fetchCoinGeckoJson(url, demoApiKey);
 
-    if (
-      !json ||
-      !json.bitcoin ||
-      !json.ethereum ||
-      !json.tether ||
-      typeof json.bitcoin.usd !== 'number' ||
-      typeof json.ethereum.usd !== 'number' ||
-      typeof json.tether.usd !== 'number'
-    ) {
+    if (!Array.isArray(json)) {
       return res.status(502).json({
         success: false,
-        message: 'CoinGecko returned an unexpected payload.',
-        raw: json
+        message: 'CoinGecko returned an unexpected payload.'
       });
     }
 
-    return res.json([
-      {
-        symbol: 'BTC',
-        name: 'Bitcoin',
-        price: json.bitcoin.usd
-      },
-      {
-        symbol: 'ETH',
-        name: 'Ethereum',
-        price: json.ethereum.usd
-      },
-      {
-        symbol: 'USDT',
-        name: 'Tether',
-        price: json.tether.usd
-      }
-    ]);
+    const result = json.map((item) => ({
+      id: item.id,
+      symbol: String(item.symbol || '').toUpperCase(),
+      name: item.name,
+      image: item.image,
+      rank: item.market_cap_rank,
+      marketCap: item.market_cap,
+      price: item.current_price,
+      priceChangePercentage24h: item.price_change_percentage_24h_in_currency
+    }));
+
+    return res.json(result);
   } catch (error) {
     console.error('GET /crypto error:', error.message);
 
