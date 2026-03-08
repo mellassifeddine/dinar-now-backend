@@ -6,6 +6,7 @@ const https = require('https');
 
 const ratesRoutes = require('./routes/rates');
 const adminRoutes = require('./routes/admin');
+const cryptoRoutes = require('./routes/crypto');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -23,6 +24,7 @@ app.get('/', (req, res) => {
 
 app.use('/rates', ratesRoutes);
 app.use('/admin', adminRoutes);
+app.use('/crypto', cryptoRoutes);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
