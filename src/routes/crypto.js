@@ -6,7 +6,7 @@ const router = express.Router();
 router.get('/', (req, res) => {
 
   const url =
-    'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether&vs_currencies=usd';
+  'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether&vs_currencies=usd';
 
   https.get(url, (apiRes) => {
 
@@ -20,7 +20,7 @@ router.get('/', (req, res) => {
 
       const json = JSON.parse(data);
 
-      const result = [
+      res.json([
         {
           symbol: 'BTC',
           name: 'Bitcoin',
@@ -36,9 +36,7 @@ router.get('/', (req, res) => {
           name: 'Tether',
           price: json.tether.usd
         }
-      ];
-
-      res.json(result);
+      ]);
 
     });
 

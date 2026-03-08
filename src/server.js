@@ -2,23 +2,21 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-const https = require('https');
 
 const ratesRoutes = require('./routes/rates');
 const adminRoutes = require('./routes/admin');
 const cryptoRoutes = require('./routes/crypto');
 
 const app = express();
-const PORT = Number(process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
 app.get('/', (req, res) => {
-  return res.json({
+  res.json({
     success: true,
-    message: 'Dinar Now API is running.',
-    admin: '/admin'
+    message: 'Dinar Now API running'
   });
 });
 
@@ -27,20 +25,5 @@ app.use('/admin', adminRoutes);
 app.use('/crypto', cryptoRoutes);
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log('Server running on port', PORT);
 });
-
-/* keep render awake */
-
-const SELF_URL =
-  'https://dinar-now-backend.onrender.com';
-
-setInterval(() => {
-
-  https.get(SELF_URL, (res) => {
-    console.log('Self ping:', res.statusCode);
-  }).on('error', (err) => {
-    console.log('Ping error:', err.message);
-  });
-
-}, 5 * 60 * 1000);
