@@ -3,40 +3,71 @@ const https = require('https');
 
 const router = express.Router();
 
-function fetchJson(url) {
+function fetchCoinGeckoJson(url, demoApiKey) {
   return new Promise((resolve, reject) => {
-    https
-      .get(url, { headers: { 'User-Agent': 'DinarNowBackend' } }, (res) => {
+    const request = https.get(
+      url,
+      {
+        headers: {
+          'User-Agent': 'DinarNowBackend/1.0',
+          'Accept': 'application/json',
+          'x-cg-demo-api-key': demoApiKey
+        }
+      },
+      (response) => {
         let data = '';
 
-        res.on('data', (chunk) => {
+        response.on('data', (chunk) => {
           data += chunk;
         });
 
-        res.on('end', () => {
+        response.on('end', () => {
+          let json;
+
           try {
-            resolve(JSON.parse(data));
-          } catch (e) {
-            reject(new Error('Invalid JSON from CoinGecko'));
+            json = JSON.parse(data);
+          } catch (_) {
+            return reject(new Error('CoinGecko returned invalid JSON.'));
           }
+
+          if (response.statusCode && response.statusCode >= 400) {
+            const message =
+              json?.error ||
+              json?.status?.error_message ||
+              `CoinGecko returned HTTP ${response.statusCode}`;
+            return reject(new Error(message));
+          }
+
+          resolve(json);
         });
-      })
-      .on('error', reject);
+      }
+    );
+
+    request.on('error', (error) => {
+      reject(error);
+    });
+
+    request.setTimeout(10000, () => {
+      request.destroy(new Error('CoinGecko request timeout.'));
+    });
   });
 }
 
 router.get('/', async (req, res) => {
-  const apiKey = process.env.COINGECKO_DEMO_API_KEY;
+  const demoApiKey = process.env.COINGECKO_DEMO_API_KEY;
 
-  if (!apiKey) {
+  if (!demoApiKey || !String(demoApiKey).trim()) {
     return res.status(500).json({
       success: false,
-      message: 'COINGECKO_DEMO_API_KEY missing'
+      message: 'COINGECKO_DEMO_API_KEY is missing on the server.'
     });
   }
 
-  const page = Number(req.query.page || 1);
-  const perPage = Number(req.query.perPage || 10);
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const perPage = Math.min(
+    50,
+    Math.max(1, Number.parseInt(req.query.perPage, 10) || 10)
+  );
 
   try {
     const url =
@@ -47,28 +78,38 @@ router.get('/', async (req, res) => {
       `&page=${page}` +
       `&sparkline=false` +
       `&price_change_percentage=24h` +
-      `&x_cg_demo_api_key=${apiKey}`;
+      `&locale=en` +
+      `&x_cg_demo_api_key=${encodeURIComponent(String(demoApiKey).trim())}`;
 
-    const json = await fetchJson(url);
+    const json = await fetchCoinGeckoJson(url, String(demoApiKey).trim());
 
-    const result = json.map((coin) => ({
-      id: coin.id,
-      symbol: coin.symbol.toUpperCase(),
-      name: coin.name,
-      image: coin.image,
-      rank: coin.market_cap_rank,
-      marketCap: coin.market_cap,
-      price: coin.current_price,
-      priceChangePercentage24h:
-        coin.price_change_percentage_24h_in_currency
+    if (!Array.isArray(json)) {
+      return res.status(502).json({
+        success: false,
+        message: 'CoinGecko returned an unexpected payload.',
+        raw: json
+      });
+    }
+
+    const result = json.map((item) => ({
+      id: item.id,
+      symbol: String(item.symbol || '').toUpperCase(),
+      name: item.name,
+      image: item.image,
+      rank: item.market_cap_rank,
+      marketCap: item.market_cap,
+      price: item.current_price,
+      priceChangePercentage24h: item.price_change_percentage_24h_in_currency
     }));
 
-    res.json(result);
-  } catch (err) {
-    res.status(502).json({
+    return res.json(result);
+  } catch (error) {
+    console.error('GET /crypto error:', error.message);
+
+    return res.status(502).json({
       success: false,
       message: 'CoinGecko request failed.',
-      error: err.message
+      error: error.message
     });
   }
 });
