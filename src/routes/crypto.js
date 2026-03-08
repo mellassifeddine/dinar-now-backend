@@ -88,8 +88,7 @@ router.get('/', async (req, res) => {
       rank: item.market_cap_rank,
       marketCap: item.market_cap,
       price: item.current_price,
-      priceChangePercentage24h:
-        item.price_change_percentage_24h
+      priceChangePercentage24h: item.price_change_percentage_24h
     }));
 
     return res.json(result);
