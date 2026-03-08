@@ -3,32 +3,15 @@ const https = require('https');
 
 const router = express.Router();
 
-let lastGoodCryptoResponse = [
-  {
-    symbol: 'BTC',
-    name: 'Bitcoin',
-    price: 0
-  },
-  {
-    symbol: 'ETH',
-    name: 'Ethereum',
-    price: 0
-  },
-  {
-    symbol: 'USDT',
-    name: 'Tether',
-    price: 0
-  }
-];
-
-function fetchJson(url) {
+function fetchCoinGeckoJson(url, demoApiKey) {
   return new Promise((resolve, reject) => {
     const request = https.get(
       url,
       {
         headers: {
           'User-Agent': 'DinarNowBackend/1.0',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'x-cg-demo-api-key': demoApiKey
         }
       },
       (response) => {
@@ -39,18 +22,23 @@ function fetchJson(url) {
         });
 
         response.on('end', () => {
-          if (response.statusCode && response.statusCode >= 400) {
-            return reject(
-              new Error(`External API returned HTTP ${response.statusCode}`)
-            );
-          }
+          let json;
 
           try {
-            const json = JSON.parse(data);
-            resolve(json);
+            json = JSON.parse(data);
           } catch (_) {
-            reject(new Error('Failed to parse external API response.'));
+            return reject(new Error('CoinGecko returned invalid JSON.'));
           }
+
+          if (response.statusCode && response.statusCode >= 400) {
+            const message =
+              json?.error ||
+              json?.status?.error_message ||
+              `CoinGecko returned HTTP ${response.statusCode}`;
+            return reject(new Error(message));
+          }
+
+          resolve(json);
         });
       }
     );
@@ -60,17 +48,26 @@ function fetchJson(url) {
     });
 
     request.setTimeout(10000, () => {
-      request.destroy(new Error('External API timeout.'));
+      request.destroy(new Error('CoinGecko request timeout.'));
     });
   });
 }
 
 router.get('/', async (req, res) => {
+  const demoApiKey = process.env.COINGECKO_DEMO_API_KEY;
+
+  if (!demoApiKey) {
+    return res.status(500).json({
+      success: false,
+      message: 'COINGECKO_DEMO_API_KEY is missing on the server.'
+    });
+  }
+
   try {
     const url =
       'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether&vs_currencies=usd';
 
-    const json = await fetchJson(url);
+    const json = await fetchCoinGeckoJson(url, demoApiKey);
 
     if (
       !json ||
@@ -81,10 +78,14 @@ router.get('/', async (req, res) => {
       typeof json.ethereum.usd !== 'number' ||
       typeof json.tether.usd !== 'number'
     ) {
-      throw new Error('Invalid crypto payload from external API.');
+      return res.status(502).json({
+        success: false,
+        message: 'CoinGecko returned an unexpected payload.',
+        raw: json
+      });
     }
 
-    const result = [
+    return res.json([
       {
         symbol: 'BTC',
         name: 'Bitcoin',
@@ -100,26 +101,13 @@ router.get('/', async (req, res) => {
         name: 'Tether',
         price: json.tether.usd
       }
-    ];
-
-    lastGoodCryptoResponse = result;
-
-    return res.json(result);
+    ]);
   } catch (error) {
     console.error('GET /crypto error:', error.message);
 
-    const hasUsableCache = lastGoodCryptoResponse.some((item) => item.price > 0);
-
-    if (hasUsableCache) {
-      return res.json({
-        source: 'cache',
-        data: lastGoodCryptoResponse
-      });
-    }
-
     return res.status(502).json({
       success: false,
-      message: 'Crypto provider unavailable.',
+      message: 'CoinGecko request failed.',
       error: error.message
     });
   }
