@@ -6,78 +6,139 @@ const router = express.Router();
 let cacheData = null;
 let cacheTime = 0;
 
-const CACHE_DURATION = 30000;
+const CACHE_DURATION_MS = 30000;
 
 function fetchJson(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'DinarNowBackend' } }, (res) => {
-      let data = '';
-
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          resolve(json);
-        } catch (err) {
-          reject(new Error('Invalid JSON from CoinGecko'));
+    const request = https.get(
+      url,
+      {
+        headers: {
+          'User-Agent': 'DinarNowBackend/1.0',
+          'Accept': 'application/json'
         }
-      });
-    }).on('error', reject);
+      },
+      (response) => {
+        let data = '';
+
+        response.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        response.on('end', () => {
+          let json;
+
+          try {
+            json = JSON.parse(data);
+          } catch (_) {
+            return reject(new Error('Provider returned invalid JSON.'));
+          }
+
+          if (response.statusCode && response.statusCode >= 400) {
+            const message =
+              json?.error ||
+              json?.status?.error_message ||
+              `Provider returned HTTP ${response.statusCode}`;
+            return reject(new Error(message));
+          }
+
+          resolve(json);
+        });
+      }
+    );
+
+    request.on('error', (error) => {
+      reject(error);
+    });
+
+    request.setTimeout(10000, () => {
+      request.destroy(new Error('Provider request timeout.'));
+    });
   });
 }
 
+function buildLogoUrl(symbol) {
+  const normalized = String(symbol || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+  if (!normalized) {
+    return '';
+  }
+
+  return `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${normalized}.png`;
+}
+
 router.get('/', async (req, res) => {
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const perPage = Math.min(
+    50,
+    Math.max(1, Number.parseInt(req.query.perPage, 10) || 10)
+  );
 
   const now = Date.now();
 
-  if (cacheData && now - cacheTime < CACHE_DURATION) {
-    return res.json(cacheData);
+  if (
+    cacheData &&
+    cacheData.page === page &&
+    cacheData.perPage === perPage &&
+    now - cacheTime < CACHE_DURATION_MS
+  ) {
+    return res.json(cacheData.items);
   }
 
   try {
-
-    const url =
-      "https://api.coingecko.com/api/v3/coins/markets" +
-      "?vs_currency=usd" +
-      "&order=market_cap_desc" +
-      "&per_page=30" +
-      "&page=1" +
-      "&sparkline=false" +
-      "&price_change_percentage=24h";
+    const url = 'https://api.coinpaprika.com/v1/tickers';
 
     const json = await fetchJson(url);
 
-    const result = json.map((coin) => ({
-      id: coin.id,
-      symbol: coin.symbol.toUpperCase(),
-      name: coin.name,
-      image: coin.image,
-      rank: coin.market_cap_rank,
-      marketCap: coin.market_cap,
-      price: coin.current_price,
-      priceChangePercentage24h: coin.price_change_percentage_24h
-    }));
+    if (!Array.isArray(json)) {
+      return res.status(502).json({
+        success: false,
+        message: 'CoinPaprika returned an unexpected payload.'
+      });
+    }
 
-    cacheData = result;
+    const start = (page - 1) * perPage;
+    const end = start + perPage;
+
+    const result = json
+      .filter((item) => item && item.rank)
+      .sort((a, b) => (a.rank || 999999) - (b.rank || 999999))
+      .slice(start, end)
+      .map((item) => ({
+        id: item.id,
+        symbol: String(item.symbol || '').toUpperCase(),
+        name: item.name,
+        image: buildLogoUrl(item.symbol),
+        rank: item.rank || 0,
+        marketCap: item.quotes?.USD?.market_cap ?? 0,
+        price: item.quotes?.USD?.price ?? 0,
+        priceChangePercentage24h:
+          item.quotes?.USD?.percent_change_24h ?? null
+      }));
+
+    cacheData = {
+      page,
+      perPage,
+      items: result
+    };
     cacheTime = now;
 
-    res.json(result);
-
+    return res.json(result);
   } catch (error) {
+    console.error('GET /crypto error:', error.message);
 
-    console.error(error);
+    if (cacheData?.items?.length) {
+      return res.json(cacheData.items);
+    }
 
-    res.status(500).json({
+    return res.status(502).json({
       success: false,
-      message: "CoinGecko request failed",
+      message: 'Crypto provider request failed.',
       error: error.message
     });
-
   }
-
 });
 
 module.exports = router;
