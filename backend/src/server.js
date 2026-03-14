@@ -12,6 +12,10 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
 
+app.get('/', (_req, res) => {
+  res.redirect('/admin');
+});
+
 app.get('/health', (_req, res) => {
   res.json({
     ok: true,
