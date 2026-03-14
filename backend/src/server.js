@@ -1,0 +1,27 @@
+const express = require('express');
+const path = require('path');
+
+const publicRoutes = require('./routes/publicRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const { PORT } = require('./config/env');
+
+const app = express();
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
+
+app.get('/health', (_req, res) => {
+  res.json({
+    ok: true,
+    service: 'dinar-now-backend',
+  });
+});
+
+app.use('/api', publicRoutes);
+app.use('/api/admin', adminRoutes);
+
+app.listen(PORT, () => {
+  console.log(`Dinar Now backend running on http://localhost:${PORT}`);
+});

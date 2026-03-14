@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Dinar Now - Admin Parallèle</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div>
+          <h1>Dinar Now – Admin Parallèle</h1>
+          <p>
+            Gère les taux du marché parallèle stockés en SQLite.<br />
+            Les modifications nécessitent une ADMIN_KEY valide côté serveur.
+          </p>
+        </div>
+
+        <div class="key-box">
+          <label for="adminKey">Admin key</label>
+          <div class="key-row">
+            <input
+              id="adminKey"
+              type="password"
+              placeholder="Entrer la clé admin"
+            />
+            <button id="saveKeyBtn" class="secondary-btn">Set</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Taux existants</h2>
+          <div class="panel-actions">
+            <button id="reloadBtn" class="secondary-btn">Rafraîchir</button>
+          </div>
+        </div>
+
+        <p id="status" class="status">Prêt.</p>
+
+        <div id="ratesContainer" class="rates-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Ajouter / modifier une devise</h2>
+        </div>
+
+        <form id="createForm" class="create-grid">
+          <div class="field">
+            <label for="newCurrency">Code (ex: EUR)</label>
+            <input id="newCurrency" type="text" placeholder="CODE" maxlength="10" />
+          </div>
+
+          <div class="field">
+            <label for="newName">Nom</label>
+            <input id="newName" type="text" placeholder="Nom complet" />
+          </div>
+
+          <div class="field">
+            <label for="newFlag">Flag / icône</label>
+            <input id="newFlag" type="text" placeholder="🇪🇺" />
+          </div>
+
+          <div class="field">
+            <label for="newBuy">Achat</label>
+            <input id="newBuy" type="number" step="0.01" placeholder="Achat" />
+          </div>
+
+          <div class="field">
+            <label for="newSell">Vente</label>
+            <input id="newSell" type="number" step="0.01" placeholder="Vente" />
+          </div>
+
+          <div class="field actions">
+            <label>&nbsp;</label>
+            <button type="submit" class="primary-btn">Enregistrer</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
