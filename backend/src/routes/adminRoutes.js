@@ -1,11 +1,17 @@
 const express = require('express');
 const db = require('../db/database');
 const { ADMIN_KEY } = require('../config/env');
+const {
+  broadcastParallelRatesUpdated,
+} = require('../utils/ratesEvents');
 
 const router = express.Router();
 
 function requireAdmin(req, res, next) {
-  const key = req.header('x-admin-key') || req.body.adminKey || req.query.adminKey;
+  const key =
+    req.header('x-admin-key') ||
+    req.body.adminKey ||
+    req.query.adminKey;
 
   if (!key || key !== ADMIN_KEY) {
     return res.status(401).json({
@@ -83,6 +89,12 @@ router.post('/rates', requireAdmin, (req, res) => {
         `
       )
       .get(currency);
+
+    broadcastParallelRatesUpdated({
+      currency,
+      buy,
+      sell,
+    });
 
     return res.json({
       success: true,
