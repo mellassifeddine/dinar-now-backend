@@ -19,7 +19,7 @@ const agent = new https.Agent({
   rejectUnauthorized: false,
 });
 
-function fetchText(url) {
+function fetchJson(url) {
   return new Promise((resolve, reject) => {
     https
       .get(
@@ -28,7 +28,7 @@ function fetchText(url) {
           agent,
           headers: {
             'User-Agent': 'DinarNow/1.0',
-            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            Accept: 'application/json,text/plain,*/*',
           },
         },
         (res) => {
@@ -48,7 +48,11 @@ function fetchText(url) {
           });
 
           res.on('end', () => {
-            resolve(data);
+            try {
+              resolve(JSON.parse(data));
+            } catch (err) {
+              reject(err);
+            }
           });
         }
       )
@@ -59,22 +63,25 @@ function fetchText(url) {
 function buildInverse(rate, symbol) {
   if (!rate || rate <= 0) return '';
   const inv = 1 / rate;
-  const digits = inv >= 1 ? 4 : 6;
-  return `1 DZD = ${inv.toFixed(digits)} ${symbol}`;
+  return `1 DZD = ${inv.toFixed(4)} ${symbol}`;
 }
 
 async function getOfficialRates() {
-  const html = await fetchText('https://www.bank-of-algeria.dz/');
+  const url = 'https://www.bank-of-algeria.dz/wp-json/wp/v2/taux-change';
+  const data = await fetchJson(url);
+
+  if (!Array.isArray(data)) {
+    throw new Error('Invalid official API response');
+  }
 
   const rows = [];
 
-  for (const symbol of Object.keys(META)) {
-    const regex = new RegExp(`${symbol}[^0-9]{0,10}([0-9]+[.,][0-9]+)`, 'i');
-    const match = html.match(regex);
+  for (const item of data) {
+    const symbol = String(item.currency || '').trim().toUpperCase();
 
-    if (!match) continue;
+    if (!META[symbol]) continue;
 
-    const value = parseFloat(match[1].replace(',', '.'));
+    const value = Number(item.rate);
 
     if (!Number.isFinite(value) || value <= 0) continue;
 
@@ -90,7 +97,7 @@ async function getOfficialRates() {
   }
 
   if (!rows.length) {
-    throw new Error('No official rates parsed');
+    throw new Error('No official rates returned');
   }
 
   return rows;
