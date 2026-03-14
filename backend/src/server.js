@@ -4,6 +4,9 @@ const path = require('path');
 const publicRoutes = require('./routes/publicRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const { PORT } = require('./config/env');
+const { seedIfEmpty } = require('./db/seed');
+
+seedIfEmpty();
 
 const app = express();
 
