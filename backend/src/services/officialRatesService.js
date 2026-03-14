@@ -19,7 +19,7 @@ const agent = new https.Agent({
   rejectUnauthorized: false,
 });
 
-function fetchJson(url) {
+function fetchText(url) {
   return new Promise((resolve, reject) => {
     https
       .get(
@@ -28,7 +28,7 @@ function fetchJson(url) {
           agent,
           headers: {
             'User-Agent': 'DinarNow/1.0',
-            Accept: 'application/json,text/plain,*/*',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           },
         },
         (res) => {
@@ -48,11 +48,7 @@ function fetchJson(url) {
           });
 
           res.on('end', () => {
-            try {
-              resolve(JSON.parse(data));
-            } catch (err) {
-              reject(err);
-            }
+            resolve(data);
           });
         }
       )
@@ -66,22 +62,45 @@ function buildInverse(rate, symbol) {
   return `1 DZD = ${inv.toFixed(4)} ${symbol}`;
 }
 
+function stripHtml(html) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#160;/gi, ' ')
+    .replace(/&AMP;/gi, '&')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
 async function getOfficialRates() {
-  const url = 'https://www.bank-of-algeria.dz/wp-json/wp/v2/taux-change';
-  const data = await fetchJson(url);
+  const html = await fetchText(
+    'https://www.bank-of-algeria.dz/taux-de-change-journalier/'
+  );
 
-  if (!Array.isArray(data)) {
-    throw new Error('Invalid official API response');
-  }
-
+  const text = stripHtml(html);
   const rows = [];
 
-  for (const item of data) {
-    const symbol = String(item.currency || '').trim().toUpperCase();
+  for (const symbol of Object.keys(META)) {
+    const patterns = [
+      new RegExp(`\\b${symbol}\\b[^0-9]{0,20}(\\d+[.,]\\d+)`, 'i'),
+      new RegExp(`\\b${symbol}\\b[^0-9]{0,20}(\\d+)`, 'i'),
+    ];
 
-    if (!META[symbol]) continue;
+    let value = null;
 
-    const value = Number(item.rate);
+    for (const regex of patterns) {
+      const match = text.match(regex);
+      if (!match) continue;
+
+      const parsed = Number(match[1].replace(',', '.'));
+      if (Number.isFinite(parsed) && parsed > 0) {
+        value = parsed;
+        break;
+      }
+    }
 
     if (!Number.isFinite(value) || value <= 0) continue;
 
@@ -97,7 +116,7 @@ async function getOfficialRates() {
   }
 
   if (!rows.length) {
-    throw new Error('No official rates returned');
+    throw new Error('Official rates not detected on page');
   }
 
   return rows;
