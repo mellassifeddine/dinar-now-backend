@@ -1,7 +1,7 @@
 const db = require('./database');
 
 const seedRates = [
-  ['EUR', 'Euro', '🇪🇺', 277.0, 279.0],
+  ['EUR', 'Euro', '🇪🇺', 240.0, 245.0],
   ['USD', 'U.S. Dollar', '🇺🇸', 231.5, 235.0],
   ['GBP', 'British Pound', '🇬🇧', 310.0, 314.0],
   ['CAD', 'Canadian Dollar', '🇨🇦', 174.7, 175.0],
@@ -94,34 +94,32 @@ const seedRates = [
   ['SHP', 'St Helena Pound', '🇸🇭', 377.5, 380.3],
 ];
 
-function seedIfEmpty() {
-  const row = db.prepare('SELECT COUNT(*) AS count FROM parallel_rates').get();
-
-  if (row.count > 0) {
-    console.log('Seed skipped: parallel_rates already contains data.');
-    return;
-  }
-
-  const insert = db.prepare(`
-    INSERT INTO parallel_rates (currency, name, flag, buy, sell)
+function ensureSeedRates() {
+  const insertOrIgnore = db.prepare(`
+    INSERT OR IGNORE INTO parallel_rates (currency, name, flag, buy, sell)
     VALUES (?, ?, ?, ?, ?)
   `);
 
   const transaction = db.transaction((items) => {
     for (const item of items) {
-      insert.run(...item);
+      insertOrIgnore.run(...item);
     }
   });
 
   transaction(seedRates);
-  console.log(`Seed completed successfully with ${seedRates.length} currencies.`);
+
+  const row = db.prepare('SELECT COUNT(*) AS count FROM parallel_rates').get();
+
+  console.log(
+    `Seed sync completed. parallel_rates now contains ${row.count} currencies.`
+  );
 }
 
 if (require.main === module) {
-  seedIfEmpty();
+  ensureSeedRates();
 }
 
 module.exports = {
-  seedIfEmpty,
+  ensureSeedRates,
   seedRates,
 };

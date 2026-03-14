@@ -26,6 +26,14 @@ app.get('/health', (_req, res) => {
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 
+try {
+  const { ensureSeedRates } = require('./db/seed');
+  ensureSeedRates();
+  console.log('Seed sync completed at startup.');
+} catch (err) {
+  console.error('Seed sync skipped due to error:', err.message);
+}
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Dinar Now backend running on port ${PORT}`);
 });
