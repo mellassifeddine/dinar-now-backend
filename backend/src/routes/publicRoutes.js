@@ -4,6 +4,9 @@ const {
   addListener,
   removeListener,
 } = require('../utils/ratesEvents');
+const {
+  getOfficialRates,
+} = require('../services/officialRatesService');
 
 const router = express.Router();
 
@@ -55,6 +58,19 @@ router.get('/parallel-rates/stream', (req, res) => {
     removeListener(res);
     res.end();
   });
+});
+
+router.get('/official-rates', async (_req, res) => {
+  try {
+    const rows = await getOfficialRates();
+    return res.json(rows);
+  } catch (error) {
+    return res.status(502).json({
+      success: false,
+      message: 'Failed to load official rates from the official source.',
+      detail: error.message,
+    });
+  }
 });
 
 module.exports = router;
