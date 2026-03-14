@@ -26,15 +26,6 @@ app.get('/health', (_req, res) => {
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 
-/* SAFE DATABASE SEED */
-try {
-  const { seedIfEmpty } = require('./db/seed');
-  seedIfEmpty();
-  console.log('Seed check completed.');
-} catch (err) {
-  console.error('Seed skipped due to error:', err.message);
-}
-
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Dinar Now backend running on port ${PORT}`);
 });
