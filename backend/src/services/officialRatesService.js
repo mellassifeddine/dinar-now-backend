@@ -19,6 +19,13 @@ const agent = new https.Agent({
   rejectUnauthorized: false,
 });
 
+const CACHE_TTL_MS = 60 * 60 * 1000;
+
+let cache = {
+  rows: null,
+  fetchedAt: 0,
+};
+
 function fetchText(url) {
   return new Promise((resolve, reject) => {
     https
@@ -28,7 +35,8 @@ function fetchText(url) {
           agent,
           headers: {
             'User-Agent': 'DinarNow/1.0',
-            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            Accept:
+                'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           },
         },
         (res) => {
@@ -64,20 +72,20 @@ function buildInverse(rate, symbol) {
 
 function stripHtml(html) {
   return html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&#160;/gi, ' ')
-    .replace(/&AMP;/gi, '&')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toUpperCase();
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&#160;/gi, ' ')
+      .replace(/&AMP;/gi, '&')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toUpperCase();
 }
 
-async function getOfficialRates() {
+async function fetchOfficialRatesFresh() {
   const html = await fetchText(
-    'https://www.bank-of-algeria.dz/taux-de-change-journalier/'
+      'https://www.bank-of-algeria.dz/taux-de-change-journalier/'
   );
 
   const text = stripHtml(html);
@@ -119,7 +127,32 @@ async function getOfficialRates() {
     throw new Error('Official rates not detected on page');
   }
 
+  cache = {
+    rows,
+    fetchedAt: Date.now(),
+  };
+
   return rows;
+}
+
+async function getOfficialRates() {
+  const cacheIsFresh =
+      Array.isArray(cache.rows) &&
+      cache.rows.isNotEmpty &&
+      Date.now() - cache.fetchedAt < CACHE_TTL_MS;
+
+  if (cacheIsFresh) {
+    return cache.rows;
+  }
+
+  try {
+    return await fetchOfficialRatesFresh();
+  } catch (error) {
+    if (Array.isArray(cache.rows) && cache.rows.length > 0) {
+      return cache.rows;
+    }
+    throw error;
+  }
 }
 
 module.exports = {
