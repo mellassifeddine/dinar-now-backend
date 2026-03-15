@@ -4,6 +4,10 @@ const path = require('path');
 const publicRoutes = require('./routes/publicRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const { PORT } = require('./config/env');
+const {
+  refreshOfficialRatesCache,
+  getOfficialRatesCacheStatus,
+} = require('./services/officialRatesService');
 
 const app = express();
 
@@ -20,6 +24,7 @@ app.get('/health', (_req, res) => {
   res.json({
     ok: true,
     service: 'dinar-now-backend',
+    officialRatesCache: getOfficialRatesCacheStatus(),
   });
 });
 
@@ -33,6 +38,23 @@ try {
 } catch (err) {
   console.error('Seed sync skipped due to error:', err.message);
 }
+
+async function warmOfficialRatesCache() {
+  try {
+    const rows = await refreshOfficialRatesCache();
+    console.log(
+      `Official rates cache refreshed successfully with ${rows.length} currencies.`
+    );
+  } catch (error) {
+    console.error('Official rates cache refresh failed:', error.message);
+  }
+}
+
+warmOfficialRatesCache();
+
+setInterval(() => {
+  warmOfficialRatesCache();
+}, 6 * 60 * 60 * 1000);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Dinar Now backend running on port ${PORT}`);

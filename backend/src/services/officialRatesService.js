@@ -26,6 +26,8 @@ let cache = {
   fetchedAt: 0,
 };
 
+let refreshInFlight = null;
+
 function fetchText(url) {
   return new Promise((resolve, reject) => {
     https
@@ -36,7 +38,7 @@ function fetchText(url) {
           headers: {
             'User-Agent': 'DinarNow/1.0',
             Accept:
-                'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           },
         },
         (res) => {
@@ -72,20 +74,20 @@ function buildInverse(rate, symbol) {
 
 function stripHtml(html) {
   return html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/&nbsp;/gi, ' ')
-      .replace(/&#160;/gi, ' ')
-      .replace(/&AMP;/gi, '&')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toUpperCase();
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#160;/gi, ' ')
+    .replace(/&AMP;/gi, '&')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
 }
 
 async function fetchOfficialRatesFresh() {
   const html = await fetchText(
-      'https://www.bank-of-algeria.dz/taux-de-change-journalier/'
+    'https://www.bank-of-algeria.dz/taux-de-change-journalier/'
   );
 
   const text = stripHtml(html);
@@ -135,18 +137,35 @@ async function fetchOfficialRatesFresh() {
   return rows;
 }
 
+async function refreshOfficialRatesCache() {
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+
+  refreshInFlight = (async () => {
+    try {
+      const rows = await fetchOfficialRatesFresh();
+      return rows;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
 async function getOfficialRates() {
   const cacheIsFresh =
-      Array.isArray(cache.rows) &&
-      cache.rows.isNotEmpty &&
-      Date.now() - cache.fetchedAt < CACHE_TTL_MS;
+    Array.isArray(cache.rows) &&
+    cache.rows.length > 0 &&
+    Date.now() - cache.fetchedAt < CACHE_TTL_MS;
 
   if (cacheIsFresh) {
     return cache.rows;
   }
 
   try {
-    return await fetchOfficialRatesFresh();
+    return await refreshOfficialRatesCache();
   } catch (error) {
     if (Array.isArray(cache.rows) && cache.rows.length > 0) {
       return cache.rows;
@@ -155,6 +174,17 @@ async function getOfficialRates() {
   }
 }
 
+function getOfficialRatesCacheStatus() {
+  return {
+    hasCache: Array.isArray(cache.rows) && cache.rows.length > 0,
+    fetchedAt: cache.fetchedAt || null,
+    ageMs: cache.fetchedAt ? Date.now() - cache.fetchedAt : null,
+    count: Array.isArray(cache.rows) ? cache.rows.length : 0,
+  };
+}
+
 module.exports = {
   getOfficialRates,
+  refreshOfficialRatesCache,
+  getOfficialRatesCacheStatus,
 };
